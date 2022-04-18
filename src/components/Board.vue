@@ -1,6 +1,6 @@
 <template>
-	<div class="d-flex">
-		<div>
+	<div>
+		<div class="d-flex">
 			<table class="board">
 				<tr v-for="(tr, y) in boardCells" :key="y">
 					<td v-for="(cell, x) in tr" :key="x" @click="clicked(y, x)">
@@ -25,30 +25,33 @@
 				</div>
 			</div>
 		</div>
-		<div>
-			<div>取得石数のテーブル</div>
-			<table class="ai-board">
-				<tr v-for="(tr, y) in canTakeStones" :key="y">
-					<td v-for="(count, x) in tr" :key="x">
-						<span v-if="count == 0">{{ count }}</span>
-						<span
-							v-else-if="count >= 1"
-							class="pointer"
-							@click="showReverce(y, x)"
-							>{{ count }}</span
-						>
-						<span v-else>{{ count }}</span>
-					</td>
-				</tr>
-			</table>
+		<div class="d-flex">
+			<div>
+				<div class="msg">{{ message }}</div>
+
+				<div>取得石数テーブル</div>
+				<table class="ai-board">
+					<tr v-for="(tr, y) in canTakeStones" :key="y">
+						<td v-for="(count, x) in tr" :key="x">
+							<span v-if="count == 0">{{ count }}</span>
+							<span
+								v-else-if="count >= 1"
+								class="pointer"
+								@click="showReverce(y, x)"
+								>{{ count }}</span
+							>
+							<span v-else>{{ count }}</span>
+						</td>
+					</tr>
+				</table>
+			</div>
 			<div class="info">
-				<div>取得できる相手の石座標</div>
+				<div>取得可能な石座標</div>
 				<div>座標:(x,y)</div>
 				<div v-for="(flag, i) in showArray" :key="i">
 					（ {{ flag[1] + 1 }} , {{ flag[0] + 1 }} ）
 				</div>
 			</div>
-			<div class="msg">{{ message }}</div>
 		</div>
 	</div>
 </template>
@@ -58,8 +61,9 @@ export default {
 	data() {
 		return {
 			turn: 1,
+			playerTrun: 1,
 			showArray: [],
-			message: "Hello,Hello",
+			message: "あなたは先行(黒)です",
 			boardCells: [
 				[0, 0, 0, 0, 0, 0],
 				[0, 0, 0, 0, 0, 0],
@@ -68,6 +72,14 @@ export default {
 				[0, 0, 0, 0, 0, 0],
 				[0, 0, 0, 0, 0, 0],
 			],
+			// boardCells: [
+			// 	[-1, -1, -1, 1, 1, 1],
+			// 	[-1, -1, -1, 1, 1, 1],
+			// 	[-1, -1, -1, 1, 1, 1],
+			// 	[1, 1, 1, -1, -1, 0],
+			// 	[1, 1, 1, -1, -1, -1],
+			// 	[1, 1, 1, -1, -1, -1],
+			// ],
 			canTakeStones: [[], [], [], [], [], []],
 			reverceFlagArray: [[], [], [], [], [], []],
 			direction: [
@@ -88,11 +100,13 @@ export default {
 				this.boardCells[y].splice(x, 1, this.turn);
 				this.reverceStone(y, x);
 				this.changeTurn();
+				this.updateStoneStates();
+				setTimeout(this.AiTurnMove, 1000);
 			} else {
-				this.message = "You can't Put Stone There!!";
+				this.message = "置けないよ";
 			}
 		},
-		updatecanStates() {
+		updateStoneStates() {
 			this.boardCells.forEach((tr, y) => {
 				tr.forEach((cell, x) => {
 					if ((cell === 1) | (cell === -1)) {
@@ -132,12 +146,10 @@ export default {
 						break;
 					}
 				}
-
 				if (hasMyStone & (reverceStone >= 1)) {
 					totalReverceStone += reverceStone;
 					directionFlags.forEach((flag) => {
 						childFlagPointArray.push(flag);
-						console.log(flag);
 					});
 				}
 			});
@@ -146,7 +158,7 @@ export default {
 			this.reverceFlagArray[y].splice(x, 1, childFlagPointArray);
 		},
 		checkEnd(y, x) {
-			// 5 >= y >= 0 かつ 5 >= x >= 0の範囲内ならtrue
+			// 走査方向に対し、5 >= y >= 0 かつ 5 >= x >= 0の範囲内ならtrue
 			return (5 >= y) & (y >= 0) & (5 >= x) & (x >= 0);
 		},
 		canPutStone(y, x) {
@@ -164,24 +176,56 @@ export default {
 		},
 		changeTurn() {
 			this.turn = 0 - this.turn;
-			if (!this.boardCells.some((value) => value.some((v) => v === 0))) {
-				// this.finish();
-			} else {
-				// this.checkPass();
-			}
+			this.isFinish();
 			let stoneColor = this.turn === 1 ? "黒" : "白";
 			this.message = stoneColor + "の番です";
 		},
-
 		showReverce(y, x) {
 			this.showArray = this.reverceFlagArray[y][x];
 		},
-	},
-	watch: {
-		boardCells: function () {
-			this.updatecanStates();
+		AiTurnMove() {
+			let AIturn = -1;
+			let putStonePosition = null;
+			let maxTakeStones = 0;
+			for (let i = 0; i <= 5; i++) {
+				for (let j = 0; j <= 5; j++) {
+					if (
+						(this.canTakeStones[i][j] != "s") &
+						(maxTakeStones < this.canTakeStones[i][j])
+					) {
+						maxTakeStones = this.canTakeStones[i][j];
+						putStonePosition = [i, j];
+					}
+				}
+			}
+			if (maxTakeStones != 0) {
+				this.boardCells[putStonePosition[0]][putStonePosition[1]] = AIturn;
+				this.reverceStone(putStonePosition[0], putStonePosition[1]);
+			} else {
+				this.message = "パスしました。";
+			}
+			this.changeTurn();
+			this.updateStoneStates();
+		},
+		isFinish() {
+			let stones = 0;
+			for (let i = 0; i <= 5; i++) {
+				for (let j = 0; j <= 5; j++) {
+					if (this.canTakeStones[i][j] == "s") {
+						stones++;
+					}
+				}
+			}
+			if (stones == 36) {
+				alert("終わり");
+			}
 		},
 	},
+	// watch: {
+	// 	boardCells: function () {
+	// 		this.updateStoneStates();
+	// 	},
+	// },
 	computed: {
 		getStonesCount() {
 			let black = 0;
@@ -202,18 +246,21 @@ export default {
 		},
 	},
 	created() {
-		this.updatecanStates();
+		this.updateStoneStates();
 	},
 };
 </script>
 
 <style scoped>
+* {
+	font-size: 10px;
+}
 .d-flex {
 	display: flex;
 }
 
 .d-flex > div {
-	margin: 10px;
+	margin: 4px;
 }
 .board {
 	border: 1px solid rgb(60, 60, 60);
@@ -221,8 +268,8 @@ export default {
 
 .board td {
 	position: relative;
-	height: 70px;
-	width: 70px;
+	height: 40px;
+	width: 40px;
 	background: green;
 	border: 1px solid rgb(60, 60, 60);
 	text-align: center;
@@ -239,8 +286,8 @@ export default {
 	z-index: 2;
 	display: inline-block;
 	border-radius: 50%;
-	width: 60px;
-	height: 60px;
+	width: 30px;
+	height: 30px;
 }
 
 .board span.white {
@@ -251,14 +298,14 @@ export default {
 }
 
 .ai-board td {
-	height: 30px;
-	width: 30px;
+	height: 20px;
+	width: 20px;
 	text-align: center;
 }
 
 .ai-board {
 	border: 1px solid rgb(100, 100, 100);
-	margin-bottom: 30px;
+	margin-bottom: 20px;
 }
 .ai-board .pointer {
 	color: blue;
@@ -267,15 +314,15 @@ export default {
 	cursor: pointer;
 }
 .info {
-	min-height: 160px;
+	min-height: 100px;
 }
 .msg {
 	color: red;
 }
 
 .stone > span {
-	width: 40px;
-	height: 40px;
+	width: 20px;
+	height: 20px;
 	border-radius: 50%;
 	border: 1px solid black;
 }
@@ -287,8 +334,8 @@ export default {
 }
 
 .blank {
-	width: 40px;
-	height: 40px;
+	width: 20px;
+	height: 20px;
 	border-radius: 0%;
 	background: green;
 	border: 1px solid rgb(0, 0, 0);
