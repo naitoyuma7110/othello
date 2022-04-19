@@ -28,8 +28,7 @@
 		<div class="d-flex">
 			<div>
 				<div class="msg">{{ message }}</div>
-
-				<div>取得石数テーブル</div>
+				<div>strategy board</div>
 				<table class="ai-board">
 					<tr v-for="(tr, y) in canTakeStones" :key="y">
 						<td v-for="(count, x) in tr" :key="x">
@@ -46,8 +45,8 @@
 				</table>
 			</div>
 			<div class="info">
-				<div>取得可能な石座標</div>
-				<div>座標:(x,y)</div>
+				<div>take position</div>
+				<div>position:(x,y)</div>
 				<div v-for="(flag, i) in showArray" :key="i">
 					（ {{ flag[1] + 1 }} , {{ flag[0] + 1 }} ）
 				</div>
@@ -72,14 +71,14 @@ export default {
 				[0, 0, 0, 0, 0, 0],
 				[0, 0, 0, 0, 0, 0],
 			],
-			// boardCells: [
-			// 	[-1, -1, -1, 1, 1, 1],
-			// 	[-1, -1, -1, 1, 1, 1],
-			// 	[-1, -1, -1, 1, 1, 1],
-			// 	[1, 1, 1, -1, -1, 0],
-			// 	[1, 1, 1, -1, -1, -1],
-			// 	[1, 1, 1, -1, -1, -1],
-			// ],
+			strategyBoard: [
+				[4, 2, 3, 3, 2, 4],
+				[2, 1, 2, 2, 1, 2],
+				[3, 2, 0, 0, 2, 3],
+				[3, 2, 0, 0, 2, 3],
+				[2, 1, 2, 2, 1, 2],
+				[4, 2, 3, 3, 2, 4],
+			],
 			canTakeStones: [[], [], [], [], [], []],
 			reverceFlagArray: [[], [], [], [], [], []],
 			direction: [
@@ -97,10 +96,7 @@ export default {
 	methods: {
 		clicked(y, x) {
 			if (this.canPutStone(y, x)) {
-				this.boardCells[y].splice(x, 1, this.turn);
-				this.reverceStone(y, x);
-				this.changeTurn();
-				this.updateStoneStates();
+				this.playerTrunMove(y, x);
 				setTimeout(this.AiTurnMove, 1000);
 			} else {
 				this.message = "置けないよ";
@@ -153,8 +149,11 @@ export default {
 					});
 				}
 			});
-			// console.log("y:" + y + " x:" + x + "トータル" + totalReverceStone);
-			this.canTakeStones[y].splice(x, 1, totalReverceStone);
+			if (totalReverceStone !== 0) {
+				this.canTakeStones[y].splice(x, 1, totalReverceStone);
+			} else {
+				this.canTakeStones[y].splice(x, 1, "X");
+			}
 			this.reverceFlagArray[y].splice(x, 1, childFlagPointArray);
 		},
 		checkEnd(y, x) {
@@ -162,11 +161,17 @@ export default {
 			return (5 >= y) & (y >= 0) & (5 >= x) & (x >= 0);
 		},
 		canPutStone(y, x) {
-			if ((this.canTakeStones[y][x] == 0) | (this.canTakeStones[y][x] == "s")) {
+			if (this.canTakeStones[y][x] == "X" || this.canTakeStones[y][x] == "s") {
 				return false;
 			} else {
 				return true;
 			}
+		},
+		playerTrunMove(y, x) {
+			this.boardCells[y].splice(x, 1, this.turn);
+			this.reverceStone(y, x);
+			this.changeTurn();
+			this.updateStoneStates();
 		},
 		reverceStone(y, x) {
 			let childFlagPoints = this.reverceFlagArray[y][x];
@@ -176,56 +181,78 @@ export default {
 		},
 		changeTurn() {
 			this.turn = 0 - this.turn;
-			this.isFinish();
 			let stoneColor = this.turn === 1 ? "黒" : "白";
 			this.message = stoneColor + "の番です";
-		},
-		showReverce(y, x) {
-			this.showArray = this.reverceFlagArray[y][x];
 		},
 		AiTurnMove() {
 			let AIturn = -1;
 			let putStonePosition = null;
-			let maxTakeStones = 0;
+			let maxTakeStonesVlue = 0;
 			for (let i = 0; i <= 5; i++) {
 				for (let j = 0; j <= 5; j++) {
 					if (
-						(this.canTakeStones[i][j] != "s") &
-						(maxTakeStones < this.canTakeStones[i][j])
+						this.canTakeStones[i][j] != "s" &&
+						this.canTakeStones[i][j] != "X"
 					) {
-						maxTakeStones = this.canTakeStones[i][j];
-						putStonePosition = [i, j];
+						if (maxTakeStonesVlue < this.strategyBoard[i][j]) {
+							maxTakeStonesVlue = this.strategyBoard[i][j];
+							putStonePosition = [i, j];
+						}
 					}
 				}
 			}
-			if (maxTakeStones != 0) {
-				this.boardCells[putStonePosition[0]][putStonePosition[1]] = AIturn;
+			if (maxTakeStonesVlue != 0) {
+				this.boardCells[putStonePosition[0]].splice(
+					putStonePosition[1],
+					1,
+					AIturn
+				);
 				this.reverceStone(putStonePosition[0], putStonePosition[1]);
 			} else {
-				this.message = "パスしました。";
+				alert("CPUがパスしました。");
 			}
 			this.changeTurn();
 			this.updateStoneStates();
+			this.isPassFinishCheck();
 		},
-		isFinish() {
+		isPassFinishCheck() {
+			let passFlag = true;
 			let stones = 0;
+			let putStones = 0;
+			let winner = null;
 			for (let i = 0; i <= 5; i++) {
 				for (let j = 0; j <= 5; j++) {
 					if (this.canTakeStones[i][j] == "s") {
-						stones++;
+						putStones++;
+						stones += this.boardCells[i][j];
+					} else if (this.canTakeStones[i][j] != "X") {
+						passFlag = false;
 					}
 				}
 			}
-			if (stones == 36) {
-				alert("終わり");
+			if (putStones === 36) {
+				if (stones > 0) {
+					winner = "プレイヤーの勝ち";
+				} else if (stones < 0) {
+					winner = "CPUの勝ち";
+				} else {
+					winner = "引き分け";
+				}
+				alert(winner);
+				return;
+			}
+			if (passFlag) {
+				alert("プレイヤーのパス");
+				this.changeTurn();
+				this.updateStoneStates();
+				this.AiTurnMove();
+				return;
 			}
 		},
+		showReverce(y, x) {
+			this.showArray = this.reverceFlagArray[y][x];
+		},
 	},
-	// watch: {
-	// 	boardCells: function () {
-	// 		this.updateStoneStates();
-	// 	},
-	// },
 	computed: {
 		getStonesCount() {
 			let black = 0;
