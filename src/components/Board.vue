@@ -46,7 +46,7 @@
 			</div>
 			<div class="info">
 				<div>take position</div>
-				<div>position:(x,y)</div>
+				<div>point:(x,y)</div>
 				<div v-for="(flag, i) in showArray" :key="i">
 					（ {{ flag[1] + 1 }} , {{ flag[0] + 1 }} ）
 				</div>
@@ -210,6 +210,8 @@ export default {
 				this.reverceStone(putStonePosition[0], putStonePosition[1]);
 			} else {
 				alert("CPUがパスしました。");
+				this.passCount++;
+				this.isPassFinishCheck();
 			}
 			this.changeTurn();
 			this.updateStoneStates();
@@ -230,7 +232,7 @@ export default {
 					}
 				}
 			}
-			if (putStones === 36) {
+			if (putStones === 36 || this.passCount >= 2) {
 				if (stones > 0) {
 					winner = "プレイヤーの勝ち";
 				} else if (stones < 0) {
@@ -243,6 +245,8 @@ export default {
 			}
 			if (passFlag) {
 				alert("プレイヤーのパス");
+				this.passCount++;
+				this.isPassFinishCheck();
 				this.changeTurn();
 				this.updateStoneStates();
 				this.AiTurnMove();
