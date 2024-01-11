@@ -1,24 +1,5 @@
 # othello
 
-## Project setup
-```
-yarn install
-```
+CPUと対戦できるよU・ω・U
 
-### Compiles and hot-reloads for development
-```
-yarn serve
-```
-
-### Compiles and minifies for production
-```
-yarn build
-```
-
-### Lints and fixes files
-```
-yarn lint
-```
-
-### Customize configuration
-See [Configuration Reference](https://cli.vuejs.org/config/).
+URL：https://naitoyuma7110.github.io/othello/
